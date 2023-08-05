@@ -158,11 +158,22 @@ app.layout = html.Div(
            component_property="figure"),
     Input(component_id="launch_site", component_property="value"),
     Input('flight_number', 'value'),
-    Input('payload_mass', 'value')
+    Input('payload_mass', 'value'),
+    Input('booster_version', 'value'),
 )
-def getSuccessPieChart(launch_site, flight_number, payload_mass):
+def getSuccessPieChart(launch_site, flight_number, payload_mass, booster_version):
     filtered_df = df[((df['Flight_No'] >= flight_number[0]) & (df['Flight_No'] <= flight_number[1]))
                      & ((df['Payload_Mass'] >= payload_mass[0]) & (df['Payload_Mass'] <= payload_mass[1]))]
+
+    chart_title = "Success launche percentage by Launch Site"
+    chart_sub_title = ""
+
+    # filter by booster versoin
+    if booster_version != "All":
+        filtered_df = df[df['Version_Booster']
+                         == booster_version]
+
+        chart_sub_title = "<br><sup>Booster %s</sup>" % booster_version
 
     filtered_df = filtered_df[['Launch_Site', 'Class']]
 
@@ -170,18 +181,21 @@ def getSuccessPieChart(launch_site, flight_number, payload_mass):
         fig = px.pie(filtered_df,
                      values='Class',
                      names='Launch_Site',
-                     title="Total success launches by Launch Site",
+                     title=chart_title + chart_sub_title,
                      color_discrete_sequence=px.colors.qualitative.Antique,
                      hole=.3)
 
     else:
         filtered_df = filtered_df[filtered_df['Launch_Site'] ==
                                   launch_site].value_counts().to_frame().reset_index()
+
+        chart_title = "Landing outcome for Launch Site %s" % launch_site
+
         # print(filtered_df)
         fig = px.pie(filtered_df,
                      values='count',
                      names=['Success', 'Failure'],
-                     title="Landing outcome for Launch Site %s" % launch_site,
+                     title=chart_title + chart_sub_title,
                      color_discrete_sequence=px.colors.qualitative.Dark2,
                      hole=.3,)
 
@@ -202,13 +216,22 @@ def getSuccessPieChart(launch_site, flight_number, payload_mass):
            component_property='figure'),
     Input(component_id="launch_site", component_property="value"),
     Input('flight_number', 'value'),
-    Input('payload_mass', 'value')
+    Input('payload_mass', 'value'),
+    Input('booster_version', 'value')
 )
-def getLaunchSiteVsPayloadMass(launch_site, flight_number, payload_mass):
+def getLaunchSiteVsPayloadMass(launch_site, flight_number, payload_mass, booster_version):
     filtered_df = df[((df['Flight_No'] >= flight_number[0]) & (df['Flight_No'] <= flight_number[1]))
                      & ((df['Payload_Mass'] >= payload_mass[0]) & (df['Payload_Mass'] <= payload_mass[1]))]
 
     chart_title = "Landing outcome of Launch Site for against Payload Mass"
+    chart_sub_title = ""
+
+    # filter by booster versoin
+    if booster_version != "All":
+        filtered_df = df[df['Version_Booster']
+                         == booster_version]
+
+        chart_sub_title += "<sup>Booster: %s</sup>" % booster_version
 
     if launch_site == None or launch_site == "All":
         fig = px.scatter(filtered_df, x='Payload_Mass', y='Class', color='Launch_Site',
@@ -243,7 +266,7 @@ def getLaunchSiteVsPayloadMass(launch_site, flight_number, payload_mass):
         plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0.2)',
         font_color=colors['text'],
-        title_text=chart_title,
+        title_text=chart_title + chart_sub_title,
         title_x=0.5,
     )
 
