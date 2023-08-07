@@ -1,4 +1,4 @@
-from dash import Dash, html, dcc, callback, Output, Input
+from dash import Dash, html, dcc, callback, Output, Input, ctx, State
 import plotly.express as px
 import pandas as pd
 import dash_bootstrap_components as dbc
@@ -23,8 +23,10 @@ df['Year'] = pd.to_datetime(df['Date']).dt.year
 
 colors = {
     'background': '#111111',
-    'text': '#839496',
+    'text': '#becdce',
     'light': '#e7e7e7',
+    'lineColor': '#687879',
+    'gridColor': '#384d4f'
 }
 
 binary_class_palette = ['#DE3163', '#50C878']
@@ -109,14 +111,16 @@ def getSuccessPieChart(launch_site, flight_number, payload_mass, booster_version
         # set color sequence for single output value
         color_sequence = binary_class_palette
 
-        if len(filtered_df['Class']) == 1:
-            color_sequence = [binary_class_palette[filtered_df['Class'][0]]]
-        else:
-            color_sequence = [binary_class_palette[filtered_df['Class']
-                                                   [0]], binary_class_palette[filtered_df['Class'][1]]]
+        if len(filtered_df['Class']) > 0:
+            if len(filtered_df['Class']) == 1:
+                color_sequence = [
+                    binary_class_palette[filtered_df['Class'][0]]]
+            else:
+                color_sequence = [binary_class_palette[filtered_df['Class']
+                                                       [0]], binary_class_palette[filtered_df['Class'][1]]]
 
-        filtered_df['Class'] = filtered_df.loc[:, ['Class']].replace(
-            {0: 'Failure', 1: 'Success'}, inplace=True)
+        filtered_df['Class'] = filtered_df['Class'].replace(
+            {0: 'Failure', 1: 'Success'})
 
         # print(filtered_df)
         fig = px.pie(filtered_df,
@@ -125,16 +129,8 @@ def getSuccessPieChart(launch_site, flight_number, payload_mass, booster_version
                      title=chart_title,
                      color_discrete_sequence=color_sequence,
                      hole=.3,)
-
-    fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
-        paper_bgcolor='rgba(0, 0, 0, 0)',
-        font_color=colors['text'],
-        title_x=0.5,
-        autosize=False,
-        height=pieChartHeight
-
-    )
+    print('len df 1: \n', filtered_df)
+    fig = updateChartLayout(filtered_df, fig, chart_title, pieChartHeight)
 
     return fig
 
@@ -162,7 +158,7 @@ def getSuccessOrbitPieChart(orbit_type, launch_site, flight_number, payload_mass
     if launch_site != None and launch_site != 'All':
         filtered_df = df[df['Launch_Site'] == launch_site]
 
-    filtered_df['Orbit'] = filtered_df.loc[:, ['Orbit']].replace(
+    filtered_df['Orbit'] = filtered_df['Orbit'].replace(
         'Ballistic lunar transfer (BLT)', 'BLT')
 
     filtered_df = filtered_df[['Orbit', 'Class']]
@@ -185,32 +181,90 @@ def getSuccessOrbitPieChart(orbit_type, launch_site, flight_number, payload_mass
         # set color sequence for single output value
         color_sequence = binary_class_palette
 
-        if len(filtered_df['Class']) == 1:
-            color_sequence = [binary_class_palette[filtered_df['Class'][0]]]
-        else:
-            color_sequence = [binary_class_palette[filtered_df['Class']
-                                                   [0]], binary_class_palette[filtered_df['Class'][1]]]
+        if len(filtered_df['Class']) > 0:
+            if len(filtered_df['Class']) == 1:
+                color_sequence = [
+                    binary_class_palette[filtered_df['Class'][0]]]
+            else:
+                color_sequence = [binary_class_palette[filtered_df['Class']
+                                                       [0]], binary_class_palette[filtered_df['Class'][1]]]
 
-        filtered_df['Class'] = filtered_df.loc[:, ['Class']].replace(
+        filtered_df['Class'] = filtered_df['Class'].replace(
             {0: 'Failure', 1: 'Success'}, inplace=True)
 
-        print(filtered_df)
         fig = px.pie(filtered_df,
                      values='count',
                      names='Class',
                      title=chart_title,
                      color_discrete_sequence=color_sequence,
                      hole=.3,)
+    print('len df 2: \n', filtered_df)
+    fig = updateChartLayout(filtered_df, fig, chart_title, pieChartHeight)
 
-    fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
-        paper_bgcolor='rgba(0, 0, 0, 0)',
-        font_color=colors['text'],
-        title_text=chart_title,
-        title_x=0.5,
-        autosize=False,
-        height=pieChartHeight
-    )
+    return fig
+
+
+@app.callback(
+    Output('success_boosterversion_pie_chart', 'figure'),
+    Input(component_id="launch_site", component_property="value"),
+    Input('flight_number', 'value'),
+    Input('payload_mass', 'value'),
+    Input('booster_version', 'value'),
+    Input('orbit_type', 'value'),
+    Input('year', 'value'),
+)
+def getSuccessRateBoosterVersionPieChart(launch_site, flight_number, payload_mass,  booster_version, orbit_type, year):
+    filtered_df = df[((df['Flight_No'] >= flight_number[0]) & (df['Flight_No'] <= flight_number[1]))
+                     & ((df['Payload_Mass'] >= payload_mass[0]) & (df['Payload_Mass'] <= payload_mass[1]))
+                     & ((df['Year'] >= year[0]) & (df['Year'] <= year[1]))]
+
+    # filrer by Launch Site
+    if launch_site != None and launch_site != 'All':
+        filtered_df = filtered_df[filtered_df['Launch_Site'] == launch_site]
+
+    # filter by Orbit type
+    if orbit_type != 'All':
+        filtered_df = df[df['Orbit'] == orbit_type]
+
+    filtered_df = filtered_df[['Version_Booster', 'Class']]
+
+    chart_title = "Successful landings by Booster Version"
+
+    if booster_version == 'All':
+        fig = px.pie(
+            filtered_df,
+            values='Class',
+            names='Version_Booster',
+            title=chart_title,
+            color_discrete_sequence=px.colors.qualitative.Antique,
+            hole=.3)
+    else:
+        filtered_df = filtered_df[filtered_df['Version_Booster'] ==
+                                  booster_version].value_counts().to_frame().reset_index()
+
+        # set color sequence for single output value
+        color_sequence = binary_class_palette
+
+        if len(filtered_df['Class']) > 0:
+            if len(filtered_df['Class']) == 1:
+                color_sequence = [
+                    binary_class_palette[filtered_df['Class'][0]]]
+            else:
+                color_sequence = [binary_class_palette[filtered_df['Class']
+                                                       [0]], binary_class_palette[filtered_df['Class'][1]]]
+
+        chart_title = "Landing outcome for Booster Version %s" % booster_version
+
+        filtered_df['Class'] = filtered_df['Class'].replace(
+            {0: 'Failure', 1: 'Success'})
+
+        fig = px.pie(filtered_df,
+                     values='count',
+                     names='Class',
+                     color_discrete_sequence=color_sequence,
+                     hole=.3,)
+
+    fig = updateChartLayout(filtered_df, fig, chart_title, pieChartHeight)
 
     return fig
 
@@ -265,91 +319,18 @@ def getLaunchSiteVsPayloadMass(launch_site, flight_number, payload_mass, booster
             launch_site)
 
     fig.update_yaxes(zeroline=False,
-                     tickvals=[0, 1], linecolor=colors['text'], gridcolor=colors['text'])
-    fig.update_xaxes(zeroline=False, linecolor=colors['text'],
-                     gridcolor=colors['text'])
+                     tickvals=[0, 1], linecolor=colors['lineColor'], gridcolor=colors['gridColor'])
+    fig.update_xaxes(zeroline=False, linecolor=colors['lineColor'],
+                     gridcolor=colors['gridColor'])
+
+    fig = updateChartLayout(filtered_df, fig, chart_title, 250)
+
     fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0.2)',
-        font_color=colors['text'],
-        title_text=chart_title,
-        title_x=0.5,
-        autosize=False,
-        height=250
     )
 
     return fig
 
-
-@app.callback(
-    Output('success_boosterversion_pie_chart', 'figure'),
-    Input(component_id="launch_site", component_property="value"),
-    Input('flight_number', 'value'),
-    Input('payload_mass', 'value'),
-    Input('booster_version', 'value'),
-    Input('orbit_type', 'value'),
-    Input('year', 'value'),
-)
-def getSuccessRateBoosterVersionPieChart(launch_site, flight_number, payload_mass,  booster_version, orbit_type, year):
-    filtered_df = df[((df['Flight_No'] >= flight_number[0]) & (df['Flight_No'] <= flight_number[1]))
-                     & ((df['Payload_Mass'] >= payload_mass[0]) & (df['Payload_Mass'] <= payload_mass[1]))
-                     & ((df['Year'] >= year[0]) & (df['Year'] <= year[1]))]
-
-    # filrer by Launch Site
-    if launch_site != None and launch_site != 'All':
-        filtered_df = filtered_df[filtered_df['Launch_Site'] == launch_site]
-
-    # filter by Orbit type
-    if orbit_type != 'All':
-        filtered_df = df[df['Orbit'] == orbit_type]
-
-    filtered_df = filtered_df[['Version_Booster', 'Class']]
-
-    chart_title = "Successful landings by Booster Version"
-
-    if booster_version == 'All':
-        fig = px.pie(
-            filtered_df,
-            values='Class',
-            names='Version_Booster',
-            title=chart_title,
-            color_discrete_sequence=px.colors.qualitative.Antique,
-            hole=.3)
-    else:
-        filtered_df = filtered_df[filtered_df['Version_Booster'] ==
-                                  booster_version].value_counts().to_frame().reset_index()
-
-        # set color sequence for single output value
-        color_sequence = binary_class_palette
-
-        if len(filtered_df['Class']) == 1:
-            color_sequence = [binary_class_palette[filtered_df['Class'][0]]]
-        else:
-            color_sequence = [binary_class_palette[filtered_df['Class']
-                                                   [0]], binary_class_palette[filtered_df['Class'][1]]]
-
-        chart_title = "Landing outcome for Booster Version %s" % booster_version
-
-        filtered_df['Class'] = filtered_df.loc[:, ['Class']].replace(
-            {0: 'Failure', 1: 'Success'})
-
-        fig = px.pie(filtered_df,
-                     values='count',
-                     names='Class',
-                     title=chart_title,
-                     color_discrete_sequence=color_sequence,
-                     hole=.3,)
-
-    fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
-        paper_bgcolor='rgba(0, 0, 0, 0)',
-        font_color=colors['text'],
-        title_x=0.5,
-        autosize=False,
-        height=pieChartHeight
-    )
-
-    return fig
 
 # YEARLY TREND CHARTS
 
@@ -396,18 +377,14 @@ def getYearlySuccessTrendLineChart(year, launch_site, flight_number, payload_mas
     )
 
     fig.update_yaxes(
-        zeroline=False, linecolor=colors['text'], gridcolor=colors['text'])
-    fig.update_xaxes(zeroline=False, linecolor=colors['text'], type='category',
-                     gridcolor=colors['text'])
+        zeroline=False, linecolor=colors['lineColor'], gridcolor=colors['gridColor'])
+    fig.update_xaxes(zeroline=False, linecolor=colors['lineColor'], type='category',
+                     gridcolor=colors['gridColor'])
+
+    fig = updateChartLayout(filtered_df, fig, chart_title, 300)
 
     fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0.2)',
-        font_color=colors['text'],
-        title_text=chart_title,
-        title_x=0.5,
-        autosize=False,
-        height=300
     )
 
     return fig
@@ -455,19 +432,67 @@ def getYearlyLaunchesBarchart(year, launch_site, flight_number, payload_mass,  b
     )
 
     fig.update_yaxes(
-        zeroline=False, linecolor=colors['text'], gridcolor=colors['text'])
-    fig.update_xaxes(zeroline=False, linecolor=colors['text'], type='category',
-                     gridcolor=colors['text'], categoryorder='category ascending')
+        zeroline=False, linecolor=colors['lineColor'], gridcolor=colors['gridColor'])
+    fig.update_xaxes(zeroline=False, linecolor=colors['lineColor'], type='category',
+                     gridcolor=colors['gridColor'], categoryorder='category ascending')
 
+    fig = updateChartLayout(filtered_df, fig, chart_title, 300)
     fig.update_layout(
-        plot_bgcolor='rgba(0, 0, 0, 0)',
         paper_bgcolor='rgba(0, 0, 0, 0.2)',
-        font_color=colors['text'],
-        title_text=chart_title,
-        title_x=0.5,
-        autosize=False,
-        height=300
     )
+
+    return fig
+
+
+@app.callback(
+    Output('launch_site', 'value'),
+    Output('flight_number', 'value'),
+    Output('payload_mass', 'value'),
+    Output('booster_version', 'value'),
+    Output('orbit_type', 'value'),
+    Output('year', 'value'),
+    Input('reset_button', 'n_clicks'),
+    State('launch_site', 'value')
+)
+def resetFilters(nclicks, launch_site):
+    return 'All', [df['Flight_No'].min(), df['Flight_No'].max()], [df['Payload_Mass'].min(), df['Payload_Mass'].max()], 'All', 'All', [df['Year'].min(), df['Year'].max()]
+
+
+def updateChartLayout(filtered_df, fig, chart_title, height):
+    if len(filtered_df) == 0:
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
+            font_color=colors['text'],
+            title_text=chart_title,
+            title_x=0.5,
+            autosize=False,
+            height=height,
+            xaxis={"visible": False},
+            yaxis={"visible": False},
+            annotations=[
+                {
+                    "text": "No data available for this graph.",
+                    "xref": "paper",
+                    "yref": "paper",
+                    "showarrow": False,
+                    "font": {
+                        "size": 14
+                    }
+                }
+            ]
+        )
+
+    else:
+        fig.update_layout(
+            plot_bgcolor='rgba(0, 0, 0, 0)',
+            paper_bgcolor='rgba(0, 0, 0, 0)',
+            font_color=colors['text'],
+            title_text=chart_title,
+            title_x=0.5,
+            autosize=False,
+            height=height
+        )
 
     return fig
 
@@ -522,6 +547,11 @@ app.layout = html.Div(
                                                          for ls in df['Launch_Site'].unique()] + [{'label': 'All Launch Sites', 'value': 'All'}],
                                                 value="All",
                                                 placeholder="Select Launch Site",
+                                                style={
+                                                    'background': colors['text'],
+                                                    'color': '#333333',
+                                                    'border-radius': '4px',
+                                                }
                                             ),
 
                                             html.Hr(),
@@ -531,7 +561,12 @@ app.layout = html.Div(
                                                 id="flight_number",
                                                 min=0, max=df['Flight_No'].max() + 1, step=25,
                                                 value=[df['Flight_No'].min(),
-                                                       df['Flight_No'].max()]
+                                                       df['Flight_No'].max()],
+                                                allowCross=False,
+                                                tooltip={
+                                                    "placement": "bottom", "always_visible": False},
+                                                marks={fn: {'label': str(fn), 'style': {'color': str(
+                                                    colors['text'])}} for fn in list(range(0, df['Flight_No'].max() + 1, 25))}
                                             ),
 
                                             html.Hr(),
@@ -541,7 +576,12 @@ app.layout = html.Div(
                                                 id="payload_mass",
                                                 min=0, max=df['Payload_Mass'].max() + 1, step=1000,
                                                 value=[df['Payload_Mass'].min(),
-                                                       df['Payload_Mass'].max()]
+                                                       df['Payload_Mass'].max()],
+                                                allowCross=False,
+                                                tooltip={
+                                                    "placement": "bottom", "always_visible": False},
+                                                marks={fn: {'label': str(fn), 'style': {'color': str(
+                                                    colors['text'])}} for fn in list(range(0, round(df['Payload_Mass'].max()) + 1, 2000))}
                                             ),
 
                                             html.Hr(),
@@ -553,7 +593,12 @@ app.layout = html.Div(
                                                          for bv in df['Version_Booster'].unique()] + [{'label': 'All Booster Versions', 'value': 'All'}],
                                                 value="All",
                                                 searchable=True,
-                                                placeholder="Select a Booster Version"
+                                                placeholder="Select a Booster Version",
+                                                style={
+                                                    'background': colors['text'],
+                                                    'color': '#333333',
+                                                    'border-radius': '4px',
+                                                }
                                             ),
 
                                             html.Hr(),
@@ -565,7 +610,12 @@ app.layout = html.Div(
                                                          for orbit in df['Orbit'].unique()] + [{'label': 'All Orbit types', 'value': 'All'}],
                                                 value="All",
                                                 searchable=True,
-                                                placeholder="Select an Orbit type"
+                                                placeholder="Select an Orbit type",
+                                                style={
+                                                    'background': colors['text'],
+                                                    'color': '#333333',
+                                                    'border-radius': '4px',
+                                                }
                                             ),
 
                                             html.Hr(),
@@ -574,8 +624,14 @@ app.layout = html.Div(
                                             dcc.RangeSlider(
                                                 id="year",
                                                 min=df['Year'].min(), max=df['Year'].max(), step=1,
-                                                marks={yr: str(yr) for yr in list(
-                                                    range(df['Year'].min(), df['Year'].max() + 1))},
+                                                allowCross=False,
+                                                tooltip={
+                                                    "placement": "bottom", "always_visible": False},
+                                                marks={
+                                                    yr: {'label': str(yr), 'style': {
+                                                        'color': str(colors['text'])}}
+                                                    for yr in list(range(df['Year'].min(), df['Year'].max() + 1))
+                                                },
                                                 value=[df['Year'].min(),
                                                        df['Year'].max()],
                                             ),
@@ -583,7 +639,7 @@ app.layout = html.Div(
                                             html.Hr(),
 
                                             dbc.Button(
-                                                "Reset Filters", id='reset_button', color="primary", className="me-1")
+                                                "Reset Filters", id='reset_button', color="primary", className="me-1", n_clicks=0)
 
                                         ]
                                     ),
@@ -669,6 +725,7 @@ app.layout = html.Div(
     ],
     style={
         'padding': 10,
+        'color': colors['text'],
     }
 )
 
