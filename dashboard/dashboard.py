@@ -129,7 +129,7 @@ def getSuccessPieChart(launch_site, flight_number, payload_mass, booster_version
                      title=chart_title,
                      color_discrete_sequence=color_sequence,
                      hole=.3,)
-    print('len df 1: \n', filtered_df)
+
     fig = updateChartLayout(filtered_df, fig, chart_title, pieChartHeight)
 
     return fig
