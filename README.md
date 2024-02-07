@@ -1,3 +1,4 @@
+![Logo](https://github.com/tharangachaminda/Falcon9_First_stage_Landing/blob/main/Dash.png)
 
 # SpaceX Falcon9 First Stage Landing Prediction - Analysis
 ![Logo](https://github.com/tharangachaminda/Falcon9_First_stage_Landing/blob/main/Dash.png)
@@ -12,8 +13,6 @@ For this project stackholders possibly be
 - SpaceX
 - NASA
 - Aerospace manufacturers around the world
-
-![Logo](https://github.com/tharangachaminda/Falcon9_First_stage_Landing/blob/main/f9_landing.jpg)
 
 ### Data Sources
 SpaceX API: https://api.spacexdata.com/v4/
