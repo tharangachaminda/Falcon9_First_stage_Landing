@@ -1,5 +1,3 @@
-![Logo](https://github.com/tharangachaminda/Falcon9_First_stage_Landing/blob/main/Dash.png)
-
 # SpaceX Falcon9 First Stage Landing Prediction - Analysis
 ![Logo](https://github.com/tharangachaminda/Falcon9_First_stage_Landing/blob/main/Dash.png)
 
