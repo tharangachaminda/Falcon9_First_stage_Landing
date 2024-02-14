@@ -59,4 +59,4 @@ pip install geopy --user
 3. Folium library for interactive geographical maps
 
 ## Demo
-[Try it on my profile](http://ec2-34-215-236-233.us-west-2.compute.amazonaws.com/falcon9_dashboard)
+[Try it on my profile](http://ec2-52-43-46-199.us-west-2.compute.amazonaws.com/falcon9_dashboard)
